@@ -42,6 +42,6 @@ total_votes_df: pd.DataFrame = pd.DataFrame(total_votes)
 all_votes: pd.DataFrame = pd.merge(total_votes_df, added_votes_df, how='outer', suffixes=('','_y'), indicator=True)
 missing_votes_df: pd.DataFrame = all_votes[all_votes['_merge'] == 'left_only'][total_votes_df.columns]
 
-print(missing_votes_df)
+# print(missing_votes_df)
 
-# missing_votes_df.to_csv(f"./{year}-missing-votes.csv")
+missing_votes_df.to_csv(f"./{year}-missing-votes.csv")
