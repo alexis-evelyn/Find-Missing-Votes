@@ -1,0 +1,8 @@
+# Dolt Repo
+us-president-precinct-results
+
+# Virtual Environment
+venv/
+
+# Python Cache
+__pycache__
