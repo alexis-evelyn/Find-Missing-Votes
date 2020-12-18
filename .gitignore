@@ -5,7 +5,7 @@ us-president-precinct-results
 skip
 
 # Log
-# insert-alabama.log
+insert-alabama.log
 
 # Virtual Environment
 venv/
