@@ -19,7 +19,7 @@ repo: Dolt = Dolt("./us-president-precinct-results")
 # select county, state, jurisdiction from precincts group by county, state, jurisdiction;
 
 # Year In Question
-year: int = 2016
+year: int = 2020
 
 # Added Counties/States/Jurisdictions
 added_votes_query = f"""

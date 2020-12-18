@@ -1,6 +1,12 @@
 # Dolt Repo
 us-president-precinct-results
 
+# Skip
+skip
+
+# Log
+# insert-alabama.log
+
 # Virtual Environment
 venv/
 
