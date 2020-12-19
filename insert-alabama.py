@@ -4,6 +4,7 @@ import logging
 import os
 import csv
 import math
+from typing import TextIO
 
 from doltpy.core import system_helpers, Dolt, DoltException
 import pandas as pd
@@ -11,9 +12,12 @@ import pandas as pd
 # This is to get DoltPy's Logger To Shut Up When Running `this_script.py -h`
 logging.Logger.setLevel(system_helpers.logger, logging.DEBUG)
 
-path: str = "./skip/alabama-prez-only/"
+# /Users/alexis/IdeaProjects/FindMissingVotes/skip/alabama-gen-only
+path: str = "./skip/alabama-gen-only/"
 file_list: list = os.listdir(path)
 
+sql_statements_file: TextIO = open("insert-me-alabama.sql", "a")
+sql_statements_file_one: TextIO = open("insert-me-county-alabama.sql", "a")
 
 # 2020-Primary-Autauga.xls.csv
 # Precinct - Columns After ABSENTEE
@@ -76,7 +80,7 @@ def write_vote(election_year: int, stage: str, precinct: str, county: str, state
 
     # election_year,stage,precinct,county,state,jurisdiction,candidate,party,writein,office,vote_mode,votes
     insert_statement = f'''
-        insert into vote_tallies (election_year,stage,precinct,county,state,jurisdiction,candidate,party,writein,office,vote_mode,votes)
+        replace into vote_tallies (election_year,stage,precinct,county,state,jurisdiction,candidate,party,writein,office,vote_mode,votes)
         values ("{election_year}", "{stage.lower()}", "{precinct.upper()}", "{county.upper()}",
         "{state.upper()}", "{jurisdiction.upper()}", "{candidate.upper()}", "{party.upper()}", "{writein}",
         "{office.upper()}", "{vote_mode.upper()}", "{votes}");
@@ -85,7 +89,8 @@ def write_vote(election_year: int, stage: str, precinct: str, county: str, state
     repo: Dolt = Dolt('./us-president-precinct-results')
 
     try:
-        repo.sql(insert_statement)
+        # repo.sql(insert_statement)
+        sql_statements_file.write(f"{insert_statement}\n")
     except DoltException as e:
         logging.error(f"Insertion Exception: {e}")
 
@@ -99,13 +104,14 @@ def add_county(precinct: str, county: str, state: str, jurisdiction: str):
     logging.debug("-------------------------")
 
     insert_statement = f'''
-        insert into precincts (precinct, county, state, jurisdiction) values ("{precinct.upper()}", "{county.upper()}", "{state.upper()}", "{jurisdiction.upper()}");
+        replace into precincts (precinct, county, state, jurisdiction) values ("{precinct.upper()}", "{county.upper()}", "{state.upper()}", "{jurisdiction.upper()}");
     '''
 
     repo: Dolt = Dolt('./us-president-precinct-results')
 
     try:
-        var = repo.sql(insert_statement, result_format="json")["rows"]
+        # var = repo.sql(insert_statement, result_format="json")["rows"]
+        sql_statements_file_one.write(f"{insert_statement}\n")
     except DoltException as e:
         None
 
@@ -121,8 +127,11 @@ for import_file in import_files:
     vote_data: pd.DataFrame = pd.read_csv(file)
 
     # for precinct in vote_data.keys()[3:]:
-    #     county: str = import_file.split("-")[2].split('.')[0]
-    #     add_county(precinct=precinct, county=county + " County", state="Alabamba", jurisdiction=county)
+    #     try:
+    #         county: str = import_file.split("-")[2].split('.')[0]
+    #         add_county(precinct=precinct, county=county + " County", state="Alabamba", jurisdiction=county)
+    #     except:
+    #         None
 
     # break
 
@@ -139,6 +148,11 @@ for import_file in import_files:
     precincts: list[str] = vote_data.keys()[3:]
 
     for row in vote_data.iterrows():
+        contest: str = vote_data.get("Contest Title")[row[0]].strip()
+
+        if "PRESIDENT AND VICE PRESIDENT OF THE UNITED STATES" not in contest:
+            continue
+
         for precinct in precincts:
             # logging.debug(vote_data.get(precinct))
             candidate: str = vote_data.get("Candidate")[row[0]].strip()
@@ -146,7 +160,8 @@ for import_file in import_files:
             votes: int = vote_data.get(precinct)[row[0]]
 
             if int(votes) == 0:
-                logging.info(f"Skipping Precinct \"{precinct.upper()}\" For Candidate \"{candidate.upper()}\" because of zero votes!!!")
+                logging.info(
+                    f"Skipping Precinct \"{precinct.upper()}\" For Candidate \"{candidate.upper()}\" because of zero votes!!!")
                 continue
 
             if party == "DEM":
@@ -173,3 +188,5 @@ for import_file in import_files:
             write_vote(election_year=election_year, stage=stage, county=county, state=state, jurisdiction=jurisdiction,
                        candidate=candidate, party=party, writein=write_in, office=office, vote_mode=vote_mode,
                        precinct=precinct, votes=int(votes))
+
+    sql_statements_file.close()

@@ -231,7 +231,7 @@ def parse_and_insert_votes(state: str, file: str):
     for index, row in votes.iterrows():
         for candidate in votes.keys()[1:]:
             county: str = row[0]
-
+        
             vote_float: float = float(str(row[candidate]).replace(',', ''))
 
             if math.isnan(vote_float):
@@ -245,6 +245,13 @@ def parse_and_insert_votes(state: str, file: str):
                 continue
 
             county_id: int = find_or_add_county(county=county, state=state)
+
+            if candidate == "Jo Jorgenson":
+                candidate = "Jo Jorgensen"
+
+            if "Other" in candidate:
+                candidate = "Other"
+
             candidate_id: int = find_or_add_candidate(name=candidate)
 
             party: str = ""
