@@ -22,7 +22,7 @@ sql_statements_file_one: TextIO = open("insert-me-county-alabama.sql", "a")
 # 2020-Primary-Autauga.xls.csv
 # Precinct - Columns After ABSENTEE
 # County - Autauga County
-# State - Alabamba
+# State - Alabama
 # Jurisdiction - Autauga
 
 
@@ -34,7 +34,7 @@ def write_candidate(candidate: str):
     repo: Dolt = Dolt('./us-president-precinct-results')
 
     try:
-        repo.sql(insert_statement)
+        # repo.sql(insert_statement)
         logging.info(f"Added Candidate: {candidate.upper()}")
     except DoltException as e:
         None  # Silently Fail As Candidate Already In Database
@@ -129,7 +129,7 @@ for import_file in import_files:
     # for precinct in vote_data.keys()[3:]:
     #     try:
     #         county: str = import_file.split("-")[2].split('.')[0]
-    #         add_county(precinct=precinct, county=county + " County", state="Alabamba", jurisdiction=county)
+    #         add_county(precinct=precinct, county=county + " County", state="Alabama", jurisdiction=county)
     #     except:
     #         None
 
@@ -156,21 +156,14 @@ for import_file in import_files:
         for precinct in precincts:
             # logging.debug(vote_data.get(precinct))
             candidate: str = vote_data.get("Candidate")[row[0]].strip()
-            party: str = vote_data.get("Party")[row[0]].strip()
-            votes: int = vote_data.get(precinct)[row[0]]
 
-            if int(votes) == 0:
-                logging.info(
-                    f"Skipping Precinct \"{precinct.upper()}\" For Candidate \"{candidate.upper()}\" because of zero votes!!!")
+            try:
+                party: str = vote_data.get("Party")[row[0]].strip()
+            except:
+                print("Error Party: {eparty}".format(eparty=vote_data.get("Party")[row[0]]))
                 continue
 
-            if party == "DEM":
-                party = "Democratic".strip()
-            elif party == "REP":
-                party = "Republican".strip()
-            else:
-                logging.debug(f"UNKNOWN PARTY: {party}")
-                exit(1)
+            votes: int = vote_data.get(precinct)[row[0]]
 
             if "Uncommitted" in candidate:
                 continue
@@ -181,6 +174,23 @@ for import_file in import_files:
             if "Under Votes" in candidate:
                 continue
 
+            if int(votes) == 0:
+                logging.info(
+                    f"Skipping Precinct \"{precinct.upper()}\" For Candidate \"{candidate.upper()}\" because of zero votes!!!")
+                continue
+
+            if party == "DEM":
+                party = "Democratic".strip()
+            elif party == "REP":
+                party = "Republican".strip()
+            elif party == "IND":
+                party = "Independent".strip()
+            elif party == "NON":
+                party = "Other".strip()
+            else:
+                logging.debug(f"UNKNOWN PARTY: {party}")
+                exit(1)
+
             candidate = normalize_candidate(candidate=candidate)
 
             write_candidate(candidate=candidate)
@@ -189,4 +199,4 @@ for import_file in import_files:
                        candidate=candidate, party=party, writein=write_in, office=office, vote_mode=vote_mode,
                        precinct=precinct, votes=int(votes))
 
-    sql_statements_file.close()
+    # sql_statements_file.close()
