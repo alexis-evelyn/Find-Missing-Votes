@@ -52,8 +52,8 @@ def main(arguments: argparse.Namespace):
     repo = create_repo_if_not_exists("./county-level-votes")
     create_tables_if_not_exists()
 
-    parse_and_insert_votes("California", "./california-18-presidential.csv")
-    parse_and_insert_votes("Nevada", "./nevada.csv")
+    parse_and_insert_votes("California", "working/california-18-presidential.csv")
+    parse_and_insert_votes("Nevada", "working/nevada.csv")
 
 
 def create_repo_if_not_exists(path: str) -> Dolt:

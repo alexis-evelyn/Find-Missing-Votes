@@ -17,7 +17,7 @@ path: str = "./skip/alabama-gen-only/"
 file_list: list = os.listdir(path)
 
 sql_statements_file: TextIO = open("insert-me-alabama.sql", "a")
-sql_statements_file_one: TextIO = open("insert-me-county-alabama.sql", "a")
+sql_statements_file_one: TextIO = open("working/insert-me-county-alabama.sql", "a")
 
 # 2020-Primary-Autauga.xls.csv
 # Precinct - Columns After ABSENTEE
@@ -31,7 +31,7 @@ def write_candidate(candidate: str):
         insert into candidates (name, fec, fec_name) values (\"{candidate.upper()}\", null, null);
     '''
 
-    repo: Dolt = Dolt('./us-president-precinct-results')
+    repo: Dolt = Dolt('working/us-president-precinct-results')
 
     try:
         # repo.sql(insert_statement)
@@ -86,7 +86,7 @@ def write_vote(election_year: int, stage: str, precinct: str, county: str, state
         "{office.upper()}", "{vote_mode.upper()}", "{votes}");
     '''
 
-    repo: Dolt = Dolt('./us-president-precinct-results')
+    repo: Dolt = Dolt('working/us-president-precinct-results')
 
     try:
         # repo.sql(insert_statement)
@@ -107,7 +107,7 @@ def add_county(precinct: str, county: str, state: str, jurisdiction: str):
         replace into precincts (precinct, county, state, jurisdiction) values ("{precinct.upper()}", "{county.upper()}", "{state.upper()}", "{jurisdiction.upper()}");
     '''
 
-    repo: Dolt = Dolt('./us-president-precinct-results')
+    repo: Dolt = Dolt('working/us-president-precinct-results')
 
     try:
         # var = repo.sql(insert_statement, result_format="json")["rows"]

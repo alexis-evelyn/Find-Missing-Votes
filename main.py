@@ -10,7 +10,7 @@ from doltpy.etl import get_df_table_writer
 # This is to get DoltPy's Logger To Shut Up When Running `this_script.py -h`
 logging.Logger.setLevel(system_helpers.logger, logging.CRITICAL)
 
-repo: Dolt = Dolt("./us-president-precinct-results")
+repo: Dolt = Dolt("working/us-president-precinct-results")
 
 # Added Counties/States/Jurisdictions
 # select county, state, jurisdiction from vote_tallies where election_year=2020 group by county, state, jurisdiction;

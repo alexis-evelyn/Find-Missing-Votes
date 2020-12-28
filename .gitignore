@@ -1,11 +1,9 @@
-# Dolt Repo
-us-president-precinct-results
-
-# Skip
-skip
+# Working Directories
+working
+county-level/working
 
 # Log
-insert-alabama.log
+working/insert-alabama.log
 
 # Virtual Environment
 venv/
