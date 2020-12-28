@@ -1,7 +1,9 @@
 #!/usr/bin/python
 
+import math
 import pandas as pd
 from doltpy.core.dolt import Dolt
+from doltpy.etl import get_df_table_writer
 
 normalize_chart: dict = {
     "BIDEN, JOSEPH R.": "JOSEPH BIDEN",
@@ -46,19 +48,25 @@ votes: pd.DataFrame = pd.read_csv('working/2020 General Election Precinct-Level 
 # votes.drop(votes.tail(1).index, inplace=True)  # Drop Last Row
 votes.dropna(inplace=True)  # Drop NaN Rows
 
+# Lowercase Column Names
+votes.columns = map(str.lower, votes.columns)
+
 # Drop All Rows Not For Presidential Election
-votes = votes[votes.Contest.str.contains("President and Vice President of the United States")]
+votes = votes[votes.contest.str.contains("President and Vice President of the United States")]
+
+# Drop All Zero Votes and Ambiguous Votes
+votes = votes[~(votes.votes == "0")]
+votes = votes[~(votes.votes == "*")]
 
 # Normalize Candidates
-normalized: pd.Series = votes.Selection.replace(normalize_chart, inplace=False)
-votes.Selection = normalized
+normalized: pd.Series = votes.selection.replace(normalize_chart, inplace=False)
+votes.selection = normalized
 
 # Jurisdiction, Precinct, Contest, Selection, Votes
 # Election Year, Stage, Precinct, County, State, Jurisdiction, Candidate, Party, Writein, Office, Vote_Mode, Votes
-# TODO: County, Party
 
 # Rename Contest To Office and Normalize
-votes.drop(columns="Contest", inplace=True)
+votes.drop(columns="contest", inplace=True)
 votes["office"] = "US PRESIDENT"
 
 # Election Year 2020 - Stage gen - Writein 0 - State Nevada
@@ -71,22 +79,35 @@ votes["state"] = "NEVADA"
 votes["vote_mode"] = "Total"
 
 # Rename Selection To candidate
-votes.rename(index=str, columns={"Selection": "candidate"}, inplace=True)
+votes.rename(index=str, columns={"selection": "candidate"}, inplace=True)
 
 # Add Party Here
 party: pd.Series = votes.candidate.replace(party_chart, inplace=False)
 votes["party"] = party
 
 # Add County Here
-county: pd.Series = votes.Jurisdiction.replace(county_chart, inplace=False)
+county: pd.Series = votes.jurisdiction.replace(county_chart, inplace=False)
 votes["county"] = county
 
 # Capitalize Columns
-votes['Jurisdiction'] = votes['Jurisdiction'].str.upper()
-votes['Precinct'] = votes['Precinct'].str.upper()
+votes['jurisdiction'] = votes['jurisdiction'].str.upper()
+votes['precinct'] = votes['precinct'].str.upper()
 
-# Lowercase Column Names
-votes.columns = map(str.lower, votes.columns)
+# Sadly not all precincts are mislabeled, otherwise I could just simply vectorize this
+# votes['precinct'] = "PRECINCT " + votes['precinct'].values
+
+normalize_precincts: list = []
+for index, row in votes.iterrows():
+    normalize_precincts.append(("PRECINCT " + row['precinct']) if row['precinct'].isnumeric() else row['precinct'])
+# normalize_precincts_df: pd.Series = pd.Series(normalize_precincts, name="precinct")
+
+votes.drop(columns="precinct", inplace=True)
+votes["precinct"] = normalize_precincts
 
 print(votes)
-# print(votes.Jurisdiction.unique())
+
+# Prepare Data Writer
+raw_data_writer = get_df_table_writer("vote_tallies", lambda: votes, None)
+
+# Write Data To Repo
+raw_data_writer(repo)
