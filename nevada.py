@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 import math
+import re
+
 import pandas as pd
 from doltpy.core.dolt import Dolt
 from doltpy.etl import get_df_table_writer
@@ -29,7 +31,7 @@ county_chart: dict = {
     'Clark': 'CLARK COUNTY',
     'Douglas': 'DOUGLAS COUNTY',
     'Elko': 'ELKO COUNTY',
-    'Esmeralda': 'ESMERELDA COUNTY',
+    'Esmeralda': 'ESMERALDA COUNTY',
     'Eureka': 'EUREKA COUNTY',
     'Humboldt': 'HUMBOLDT COUNTY',
     'Lander': 'LANDER COUNTY',
@@ -44,7 +46,8 @@ county_chart: dict = {
 }
 
 repo = Dolt("working/us-president-precinct-results")
-votes: pd.DataFrame = pd.read_csv('working/2020 General Election Precinct-Level Results.csv', skiprows=2, encoding="iso-8859-1")
+votes: pd.DataFrame = pd.read_csv('working/2020 General Election Precinct-Level Results.csv', skiprows=2,
+                                  encoding="iso-8859-1")
 # votes.drop(votes.tail(1).index, inplace=True)  # Drop Last Row
 votes.dropna(inplace=True)  # Drop NaN Rows
 
@@ -96,18 +99,85 @@ votes['precinct'] = votes['precinct'].str.upper()
 # Sadly not all precincts are mislabeled, otherwise I could just simply vectorize this
 # votes['precinct'] = "PRECINCT " + votes['precinct'].values
 
+# DEBUG: Drop Clark County
+# votes = votes[~(votes.county == "CLARK COUNTY")]
+
 normalize_precincts: list = []
 for index, row in votes.iterrows():
-    normalize_precincts.append(("PRECINCT " + row['precinct']) if row['precinct'].isnumeric() else row['precinct'])
-# normalize_precincts_df: pd.Series = pd.Series(normalize_precincts, name="precinct")
+    if row['precinct'] == "18-RANCHOS III-2":
+        normalize_precincts.append("18-RANCHOS III")
+    elif row['county'] == "WASHOE COUNTY" and re.sub("[^0-9]", "", row['precinct']) != "":
+        normalize_precincts.append(re.sub("[^0-9]", "", row['precinct']))
+    elif row['county'] == "CLARK COUNTY":
+        normalize_precincts.append(row['precinct'])
+    else:
+        normalize_precincts.append(("PRECINCT " + row['precinct']) if row['precinct'].isnumeric() else row['precinct'])
 
 votes.drop(columns="precinct", inplace=True)
 votes["precinct"] = normalize_precincts
+# votes.set_index("election_year", inplace=True)
 
 print(votes)
 
+columns: str = str(', '.join(votes.columns))
+queries: list = []
+for index, row in votes.iterrows():
+    data: str = str(tuple(row.values))
+
+    insert_query: str = f'''
+        insert into vote_tallies ({columns}) values {data};
+    '''
+    queries.append(insert_query)
+
+sql_file = open("working/us-president-precinct-results/sql-import-me-nevada.sql", mode="w")
+sql_file.writelines(queries)
+
+# votes.to_csv("working/us-president-precinct-results/import-me-nevada.csv")
+
 # Prepare Data Writer
-raw_data_writer = get_df_table_writer("vote_tallies", lambda: votes, None)
+# raw_data_writer = get_df_table_writer("vote_tallies", lambda: votes,
+#                                       ["election_year", "stage", "precinct", "county", "state", "jurisdiction",
+#                                        "candidate", "vote_mode"])
 
 # Write Data To Repo
-raw_data_writer(repo)
+# raw_data_writer(repo)
+
+# dolt sql -q "insert into candidates (name, fec, fec_name) values (\"EXPLICITLY ABSTAINED\", null, null);"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"233 - CALIENTE NORTH\", \"LINCOLN COUNTY\", \"NEVADA\", \"LINCOLN\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"236 - CALIENTE SOUTH\", \"LINCOLN COUNTY\", \"NEVADA\", \"LINCOLN\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"PRECINCT 88\", \"HUMBOLDT COUNTY\", \"NEVADA\", \"HUMBOLDT\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"NEW RESIDENT\", \"WASHOE COUNTY\", \"NEVADA\", \"WASHOE\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"NO FIXED RES\", \"WASHOE COUNTY\", \"NEVADA\", \"WASHOE\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"PROVISIONAL\", \"WASHOE COUNTY\", \"NEVADA\", \"WASHOE\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"2062\", \"WASHOE COUNTY\", \"NEVADA\", \"WASHOE\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"2065\", \"WASHOE COUNTY\", \"NEVADA\", \"WASHOE\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"5047\", \"WASHOE COUNTY\", \"NEVADA\", \"WASHOE\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"7548\", \"WASHOE COUNTY\", \"NEVADA\", \"WASHOE\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"7592\", \"WASHOE COUNTY\", \"NEVADA\", \"WASHOE\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"7593\", \"WASHOE COUNTY\", \"NEVADA\", \"WASHOE\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"1711\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"1713\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"2399\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"2717\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"3566\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"3587\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"3588\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"3613\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"3700\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"3705\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"3714\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"3753\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"5599\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"5649\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"5650\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"5655\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"6467\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"6468\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"6484\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"6600\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"6717\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"6718\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"6740\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"6750\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"6753\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
+# dolt sql -q "insert into precincts (precinct, county, state, jurisdiction) values (\"7596\", \"CLARK COUNTY\", \"NEVADA\", \"CLARK\");"
