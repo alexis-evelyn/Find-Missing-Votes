@@ -2,6 +2,7 @@
 
 import math
 import re
+from typing import List
 
 import pandas as pd
 from doltpy.core.dolt import Dolt
@@ -102,6 +103,12 @@ votes['precinct'] = votes['precinct'].str.upper()
 # DEBUG: Drop Clark County
 # votes = votes[~(votes.county == "CLARK COUNTY")]
 
+clark_county_precincts: List[str] = []
+with open("./working/us-president-precinct-results/nevada-precincts.csv", 'r') as f:
+    for line in f:
+        # print(line, end='')
+        clark_county_precincts.append(line)
+
 normalize_precincts: list = []
 for index, row in votes.iterrows():
     if row['precinct'] == "18-RANCHOS III-2":
@@ -109,7 +116,12 @@ for index, row in votes.iterrows():
     elif row['county'] == "WASHOE COUNTY" and re.sub("[^0-9]", "", row['precinct']) != "":
         normalize_precincts.append(re.sub("[^0-9]", "", row['precinct']))
     elif row['county'] == "CLARK COUNTY":
-        normalize_precincts.append(row['precinct'])
+        for clark_precint in clark_county_precincts:
+            matches: list = re.findall(row['precinct'], clark_precint)
+            for match in matches:
+                # print(f"Clark Match: {clark_precint}")
+                normalize_precincts.append(clark_precint.strip("\n"))
+                break
     else:
         normalize_precincts.append(("PRECINCT " + row['precinct']) if row['precinct'].isnumeric() else row['precinct'])
 
